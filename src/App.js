@@ -16,13 +16,12 @@ function App() {
         }
     }, [])
 
-    useEffect(() => {
-        if (imgData) {
-            console.log('effect', res);
-            ascii(imgData)
-        }
-        // eslint-disable-next-line
-    }, [imgData])
+    // useEffect(() => {
+    //     if (imgData) {
+    //         ascii(imgData)
+    //     }
+    //     // eslint-disable-next-line
+    // }, [imgData])
 
 
     const ascii = (imgData) => {
@@ -42,12 +41,22 @@ function App() {
             else if (c > 160) return '7'
             else if (c > 140) return ')'
             else if (c > 120) return '/'
-            else if (c > 100) return 'i'
-            else if (c > 80) return 'l'
-            else if (c > 60) return 'j'
-            else if (c > 40) return 'n'
-            else if (c > 20) return 'Y'
-            else return 'X'
+            else if (c > 100) return '+'
+            else if (c > 80) return '-'
+            else if (c > 60) return '^'
+            else if (c > 40) return ':'
+            else if (c > 20) return '*'
+            else return '·'
+        }
+
+        const toText = (array, size) => {
+            let aux = [],
+                string = array.map(e => e.char).toString().replaceAll(',', '')
+            for (let i = 0; i < array.length / size; i++) {
+                aux.push(string.slice(0, size))
+                string = string.slice(size)
+            }
+            return aux
         }
 
         for (let y = 0; y < height; y += res) {
@@ -70,6 +79,8 @@ function App() {
                 })
             }
         }
+
+        setBluePrint(() => toText(imageToArray, Math.ceil(width / res)))
         return imageToArray
     }
 
@@ -80,8 +91,8 @@ function App() {
         img.src = URL.createObjectURL(file)
 
         img.onload = () => {
-            const width = img.width,
-                height = img.height
+            const width = Math.ceil(img.width),
+                height = Math.ceil(img.height)
 
             canvas.current.width = width
             canvas.current.height = height
@@ -108,9 +119,13 @@ function App() {
             <section>
                 <canvas ref={canvas} style={{ border: '1px solid skyblue' }}></canvas>
                 <input type="file" onChange={loadImage}></input>
-                <p>{res}</p>
+                <p>{res}{imgData && <i> ({Math.ceil(imgData.width / res)} per row)</i>}
+                </p>
                 <input type="range" min={1} max={15} defaultValue={5} onChange={(e) => setRes(parseInt(e.target.value))}></input>
-                {bluePrint && <button onClick={print}>PRINT</button>}
+                <button onClick={print}>PRINT</button>
+                <div className='ascciContainer'>
+                    {bluePrint && bluePrint.map(string => <p>{string}</p>)}
+                </div>
             </section>
         </div>
     );
