@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import './App.css';
 
 function App() {
-    // const [image, setImage] = useState()
     const [bluePrint, setBluePrint] = useState()
     const [res, setRes] = useState(5)
     const [imgData, setImgData] = useState()
@@ -16,14 +15,6 @@ function App() {
         }
     }, [])
 
-    // useEffect(() => {
-    //     if (imgData) {
-    //         ascii(imgData)
-    //     }
-    //     // eslint-disable-next-line
-    // }, [imgData])
-
-
     const ascii = (imgData) => {
         const {
             width,
@@ -32,6 +23,7 @@ function App() {
         } = imgData
 
         let imageToArray = []
+
         const rgbToChar = (c) => {
             if (c > 250) return '@'
             else if (c > 240) return '#'
@@ -41,11 +33,11 @@ function App() {
             else if (c > 160) return '7'
             else if (c > 140) return ')'
             else if (c > 120) return '/'
-            else if (c > 100) return '+'
-            else if (c > 80) return '-'
+            else if (c > 100) return '*'
+            else if (c > 80) return '+'
             else if (c > 60) return '^'
-            else if (c > 40) return ':'
-            else if (c > 20) return '*'
+            else if (c > 40) return '-'
+            else if (c > 20) return ':'
             else return '·'
         }
 
@@ -91,8 +83,8 @@ function App() {
         img.src = URL.createObjectURL(file)
 
         img.onload = () => {
-            const width = Math.ceil(img.width),
-                height = Math.ceil(img.height)
+            const width = img.width,
+                height = img.height
 
             canvas.current.width = width
             canvas.current.height = height
@@ -105,6 +97,7 @@ function App() {
 
     const print = () => {
         cntx.current.clearRect(0, 0, canvas.current.width, canvas.current.height)
+        cntx.current.font = res * 1.2 + 'px Courier Prime'
         ascii(imgData).forEach(e => {
             cntx.current.fillStyle = e.color
             cntx.current.fillText(e.char, e.x, e.y)
@@ -116,19 +109,25 @@ function App() {
             <header className="App-header">
                 <h1>Image mutator</h1>
             </header>
+
+            <canvas ref={canvas}></canvas>
+
             <section>
-                <canvas ref={canvas} style={{ border: '1px solid skyblue' }}></canvas>
                 <input type="file" onChange={loadImage}></input>
                 <p>{res}{imgData && <i> ({Math.ceil(imgData.width / res)} per row)</i>}
                 </p>
                 <input type="range" min={1} max={15} defaultValue={5} onChange={(e) => setRes(parseInt(e.target.value))}></input>
-                <button onClick={print}>PRINT</button>
-                <div className='ascciContainer'>
-                    {bluePrint && bluePrint.map(string => <p>{string}</p>)}
-                </div>
+                <button onClick={print}>MUTATE</button>
             </section>
+
+            <div className='ascciContainer'>
+                {bluePrint && bluePrint.map((string, i) => <p key={i}>{string}</p>)}
+            </div>
         </div>
     );
 }
 
 export default App;
+
+//: https://github.com/benwiley4000/gif-frames
+//? gif frames
