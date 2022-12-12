@@ -1,8 +1,9 @@
 .App {
     text-align: center;
-    background-color: #282c34;
+    /* background-color: #282c34; */
     min-height: 100vh;
-    height: fit-content;
+    /* height: fit-content; */
+    /* padding-bottom: 2em; */
 }
 
 .App-header {
@@ -16,6 +17,7 @@
 
 .ascciContainer {
     margin: 2em 0;
+    height: fit-content;
     font-family: 'Courier Prime', monospace;
     line-height: 0%;
     letter-spacing: .1em;

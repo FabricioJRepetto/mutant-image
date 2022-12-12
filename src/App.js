@@ -3,8 +3,11 @@ import './App.css';
 
 function App() {
     const [bluePrint, setBluePrint] = useState()
+    const [style, setStyle] = useState('dots')
     const [res, setRes] = useState(5)
     const [imgData, setImgData] = useState()
+    const [fontSize, setFontSize] = useState(1)
+    const [showText, setShowText] = useState(false)
 
     const canvas = useRef(null)
     const cntx = useRef(null)
@@ -15,7 +18,7 @@ function App() {
         }
     }, [])
 
-    const ascii = (imgData) => {
+    const mutator = (imgData) => {
         const {
             width,
             height,
@@ -60,19 +63,30 @@ function App() {
                     g = data[pos + 1],
                     b = data[pos + 2],
                     average = (r + g + b) / 3,
-                    char = rgbToChar(average),
+                    // (average * 100) / 255 = tamaño relativo al brillo (regla de 3)
+                    // / 100 = tamaño convertido a porcentaje
+                    // res * porcentaje = tamaño del circulo en pixeles
+                    dotSize = style === 'dots' && Math.round(res * (((average * 100) / 255)) / 100),
+                    char = style === 'ascii' && rgbToChar(average),
                     rgb = `rgb(${r}, ${g}, ${b})`
+
+                if (average !== 255) console.log('res: ', res, 'avg: ', average, 'size: ', dotSize)
 
                 imageToArray.push({
                     x,
                     y,
-                    char,
-                    color: rgb
+                    average,//: ascii & dots
+                    char,//? ascii
+                    dotSize,//* dots
+                    r,//! CMYK
+                    g,//! CMYK
+                    b,//! CMYK
+                    color: rgb//: ascii & dots
                 })
             }
         }
 
-        setBluePrint(() => toText(imageToArray, Math.ceil(width / res)))
+        style === 'ascii' && setBluePrint(() => toText(imageToArray, Math.round(width / res))) //? ascii text version
         return imageToArray
     }
 
@@ -89,19 +103,53 @@ function App() {
             canvas.current.width = width
             canvas.current.height = height
             cntx.current.drawImage(img, 0, 0, width, height)
-            //? console.log(canvas.current.toDataURL()) // convierte a base64
+            // console.log(canvas.current.toDataURL()) //? convierte a base64
             const data = cntx.current.getImageData(0, 0, width, height)
             setImgData(() => data)
         }
     }
 
-    const print = () => {
+    const print = (size) => {
         cntx.current.clearRect(0, 0, canvas.current.width, canvas.current.height)
-        cntx.current.font = res * 1.2 + 'px Courier Prime'
-        ascii(imgData).forEach(e => {
-            cntx.current.fillStyle = e.color
-            cntx.current.fillText(e.char, e.x, e.y)
-        })
+
+        switch (style) {
+            case 'dots':
+                mutator(imgData).forEach(e => drawCircle(e.x, e.y, e.dotSize, e.color))
+                break;
+
+            default:
+                size
+                    ? cntx.current.font = Math.round(Math.round(imgData.width / res) * size) + 'px Courier Prime'
+                    : cntx.current.font = Math.round(Math.round(imgData.width / res) * fontSize) + 'px Courier Prime'
+
+                mutator(imgData).forEach(e => {
+                    cntx.current.fillStyle = e.color
+                    cntx.current.fillText(e.char, e.x, e.y)
+                })
+                break;
+        }
+
+    }
+
+    const fontSizeHandler = (e) => {
+        e.preventDefault()
+        if (!imgData) return
+        let size = parseInt(e.target.value) / 10
+        setFontSize(() => size)
+        print(size)
+    }
+
+    const styleHandler = (e) => {
+        e.preventDefault()
+        let value = e.target.value
+        setStyle(() => value)
+    }
+
+    const drawCircle = (x, y, size, color) => {
+        const circle = new Path2D();
+        circle.arc(x, y, size, 0, 2 * Math.PI);
+        cntx.current.fillStyle = color
+        cntx.current.fill(circle)
     }
 
     return (
@@ -112,16 +160,33 @@ function App() {
 
             <canvas ref={canvas}></canvas>
 
-            <section>
+            <div>
                 <input type="file" onChange={loadImage}></input>
-                <p>{res}{imgData && <i> ({Math.ceil(imgData.width / res)} per row)</i>}
-                </p>
-                <input type="range" min={1} max={15} defaultValue={5} onChange={(e) => setRes(parseInt(e.target.value))}></input>
-                <button onClick={print}>MUTATE</button>
-            </section>
+            </div>
+
+            <div>
+                <select name="style" id="select" defaultValue={'dots'} onChange={styleHandler}>
+                    <option value="ascii">ascii</option>
+                    <option value="dots">dots</option>
+                </select>
+            </div>
+
+            <div>
+                <p>{res}{imgData && <i> ({Math.round(imgData.width / res)} per row)</i>}</p>
+                <input type="range" min={1} max={150} defaultValue={5} onChange={(e) => setRes(parseInt(e.target.value))}></input>
+            </div>
+
+            <div>
+                <p>Font size: <i>{fontSize}</i></p>
+                <input type="range" min={0} max={19} defaultValue={10} onChange={fontSizeHandler}></input>
+            </div>
+
+            <button onClick={print}>MUTATE</button>
+            <button onClick={() => setShowText(() => !showText)}>SHOW TEXT</button>
+            {/* <button onClick={drawCircle}>CIRCLE</button> */}
 
             <div className='ascciContainer'>
-                {bluePrint && bluePrint.map((string, i) => <p key={i}>{string}</p>)}
+                {bluePrint && showText && bluePrint.map((string, i) => <p key={i}>{string}</p>)}
             </div>
         </div>
     );
@@ -131,3 +196,7 @@ export default App;
 
 //: https://github.com/benwiley4000/gif-frames
 //? gif frames
+
+//: 1 - carga la imagen: setea el tamaño del canvas y muestra la imagen
+//* 2 - imprime: limpia el canvas, setea tamaño de fuente, 
+//* genera array de caracteres segun resolución y dibuja en el canvas
