@@ -1,13 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
 import './App.css';
+import { mutator } from './utils/mutator';
 
 function App() {
-    const [bluePrint, setBluePrint] = useState()
+    const [bluePrint, setBluePrint] = useState(false)
+    const [loading, setLoading] = useState(false)
     const [style, setStyle] = useState('dots')
     const [res, setRes] = useState(5)
+    const [invertSize, setInvertSize] = useState(false)
     const [imgData, setImgData] = useState()
     const [fontSize, setFontSize] = useState(1)
     const [showText, setShowText] = useState(false)
+    const [containedDots, setContainedDots] = useState(true)
 
     const canvas = useRef(null)
     const cntx = useRef(null)
@@ -17,78 +21,6 @@ function App() {
             cntx.current = canvas.current.getContext('2d')
         }
     }, [])
-
-    const mutator = (imgData) => {
-        const {
-            width,
-            height,
-            data
-        } = imgData
-
-        let imageToArray = []
-
-        const rgbToChar = (c) => {
-            if (c > 250) return '@'
-            else if (c > 240) return '#'
-            else if (c > 220) return '%'
-            else if (c > 200) return '&'
-            else if (c > 180) return '$'
-            else if (c > 160) return '7'
-            else if (c > 140) return ')'
-            else if (c > 120) return '/'
-            else if (c > 100) return '*'
-            else if (c > 80) return '+'
-            else if (c > 60) return '^'
-            else if (c > 40) return '-'
-            else if (c > 20) return ':'
-            else return '·'
-        }
-
-        const toText = (array, size) => {
-            let aux = [],
-                string = array.map(e => e.char).toString().replaceAll(',', '')
-            for (let i = 0; i < array.length / size; i++) {
-                aux.push(string.slice(0, size))
-                string = string.slice(size)
-            }
-            return aux
-        }
-
-        for (let y = 0; y < height; y += res) {
-            for (let x = 0; x < width; x += res) {
-                const posX = x * 4,
-                    posY = y * 4,
-                    pos = (posY * width) + posX,
-                    r = data[pos],
-                    g = data[pos + 1],
-                    b = data[pos + 2],
-                    average = (r + g + b) / 3,
-                    // (average * 100) / 255 = tamaño relativo al brillo (regla de 3)
-                    // / 100 = tamaño convertido a porcentaje
-                    // res * porcentaje = tamaño del circulo en pixeles
-                    dotSize = style === 'dots' && Math.round(res * (((average * 100) / 255)) / 100),
-                    char = style === 'ascii' && rgbToChar(average),
-                    rgb = `rgb(${r}, ${g}, ${b})`
-
-                if (average !== 255) console.log('res: ', res, 'avg: ', average, 'size: ', dotSize)
-
-                imageToArray.push({
-                    x,
-                    y,
-                    average,//: ascii & dots
-                    char,//? ascii
-                    dotSize,//* dots
-                    r,//! CMYK
-                    g,//! CMYK
-                    b,//! CMYK
-                    color: rgb//: ascii & dots
-                })
-            }
-        }
-
-        style === 'ascii' && setBluePrint(() => toText(imageToArray, Math.round(width / res))) //? ascii text version
-        return imageToArray
-    }
 
     const loadImage = (e) => {
         e.preventDefault()
@@ -109,25 +41,31 @@ function App() {
         }
     }
 
-    const print = (size) => {
+    const print = async (size) => {
+        setLoading(() => true)
         cntx.current.clearRect(0, 0, canvas.current.width, canvas.current.height)
+        if (style === 'dots') {
+            canvas.current.width = imgData.width + res * 4
+            canvas.current.height = imgData.height + res * 4
+        }
+        const data = await mutator(imgData, res, style, containedDots, invertSize, setBluePrint)
 
         switch (style) {
             case 'dots':
-                mutator(imgData).forEach(e => drawCircle(e.x, e.y, e.dotSize, e.color))
+                data.forEach(e => drawCircle(e.x + res * 1.7, e.y + res * 1.7, e.dotSize, e.color))
                 break;
 
             default:
-                size
-                    ? cntx.current.font = Math.round(Math.round(imgData.width / res) * size) + 'px Courier Prime'
-                    : cntx.current.font = Math.round(Math.round(imgData.width / res) * fontSize) + 'px Courier Prime'
+                //? fonts: Courier Prime / Inconsolata
+                cntx.current.font = Math.round(Math.round(res * (size ? size : fontSize))) + 'px Inconsolata'
 
-                mutator(imgData).forEach(e => {
+                data.forEach(e => {
                     cntx.current.fillStyle = e.color
                     cntx.current.fillText(e.char, e.x, e.y)
                 })
                 break;
         }
+        setLoading(() => false)
 
     }
 
@@ -152,13 +90,18 @@ function App() {
         cntx.current.fill(circle)
     }
 
+    // const drawSquare = (x, y, size, color) => {
+
+    // }
+
     return (
         <div className="App">
             <header className="App-header">
                 <h1>Image mutator</h1>
             </header>
 
-            <canvas ref={canvas}></canvas>
+            <canvas ref={canvas} className='canvas'></canvas>
+            {loading && <h1>···LOADING···</h1>}
 
             <div>
                 <input type="file" onChange={loadImage}></input>
@@ -172,18 +115,33 @@ function App() {
             </div>
 
             <div>
-                <p>{res}{imgData && <i> ({Math.round(imgData.width / res)} per row)</i>}</p>
+                <p>Resolution: {res}{imgData && <i> ({Math.ceil(imgData.width / res)} per row)</i>}</p>
                 <input type="range" min={1} max={150} defaultValue={5} onChange={(e) => setRes(parseInt(e.target.value))}></input>
             </div>
 
-            <div>
-                <p>Font size: <i>{fontSize}</i></p>
-                <input type="range" min={0} max={19} defaultValue={10} onChange={fontSizeHandler}></input>
-            </div>
+            {style === 'dots' &&
+                <>
+                    <label htmlFor="limitDots">limit dot size to cell</label>
+                    <input type="checkbox" name="limitDots" id="limitDots" defaultChecked onChange={() => setContainedDots(() => !containedDots)}></input>
+                </>}
 
-            <button onClick={print}>MUTATE</button>
-            <button onClick={() => setShowText(() => !showText)}>SHOW TEXT</button>
-            {/* <button onClick={drawCircle}>CIRCLE</button> */}
+            {style === 'ascii' &&
+                <>
+                    <>
+                        <p>Font size: <i>{fontSize}</i></p>
+                        <input type="range" min={0} max={19} defaultValue={10} onChange={fontSizeHandler}></input>
+                    </>
+                    <button onClick={() => setShowText(() => !showText)} disabled={!bluePrint}>SHOW TEXT</button>
+                </>}
+
+            <div>
+                <>
+                    <label htmlFor="invert">Invert sizes: {invertSize ? 'yes' : 'no'}</label>
+                    <input type="checkbox" name="invert" id="invert" onChange={() => setInvertSize(() => !invertSize)}></input>
+                </>
+                <button onClick={print} disabled={!imgData}>MUTATE</button>
+            </div>
+            {/* <button onClick={testCircle}>CIRCLE</button> */}
 
             <div className='ascciContainer'>
                 {bluePrint && showText && bluePrint.map((string, i) => <p key={i}>{string}</p>)}
