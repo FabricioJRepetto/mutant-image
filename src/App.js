@@ -8,6 +8,7 @@ function App() {
     const [style, setStyle] = useState('dots')
     const [res, setRes] = useState(5)
     const [invertSize, setInvertSize] = useState(false)
+    const [margin, setMargin] = useState(false)
     const [imgData, setImgData] = useState()
     const [fontSize, setFontSize] = useState(1)
     const [showText, setShowText] = useState(false)
@@ -44,7 +45,7 @@ function App() {
     const print = async (size) => {
         setLoading(() => true)
         cntx.current.clearRect(0, 0, canvas.current.width, canvas.current.height)
-        if (style === 'dots') {
+        if (margin) {
             canvas.current.width = imgData.width + res * 4
             canvas.current.height = imgData.height + res * 4
         }
@@ -52,7 +53,7 @@ function App() {
 
         switch (style) {
             case 'dots':
-                data.forEach(e => drawCircle(e.x + res * 1.7, e.y + res * 1.7, e.dotSize, e.color))
+                data.forEach(e => drawCircle(margin ? e.x + res * 1.7 : e.x, margin ? e.y + res * 1.7 : e.y + res * 1.7, e.dotSize, e.color))
                 break;
 
             default:
@@ -61,7 +62,7 @@ function App() {
 
                 data.forEach(e => {
                     cntx.current.fillStyle = e.color
-                    cntx.current.fillText(e.char, e.x, e.y)
+                    cntx.current.fillText(e.char, margin ? e.x + res * 1.7 : e.x, margin ? e.y + res * 2.3 : e.y)
                 })
                 break;
         }
@@ -130,6 +131,7 @@ function App() {
                     <>
                         <p>Font size: <i>{fontSize}</i></p>
                         <input type="range" min={0} max={19} defaultValue={10} onChange={fontSizeHandler}></input>
+                        <br />
                     </>
                     <button onClick={() => setShowText(() => !showText)} disabled={!bluePrint}>SHOW TEXT</button>
                 </>}
@@ -138,6 +140,10 @@ function App() {
                 <>
                     <label htmlFor="invert">Invert sizes: {invertSize ? 'yes' : 'no'}</label>
                     <input type="checkbox" name="invert" id="invert" onChange={() => setInvertSize(() => !invertSize)}></input>
+                    <br />
+                    <label htmlFor="margin">Margin: {margin ? 'yes' : 'no'}</label>
+                    <input type="checkbox" name="margin" id="margin" onChange={() => setMargin(() => !margin)}></input>
+                    <br />
                 </>
                 <button onClick={print} disabled={!imgData}>MUTATE</button>
             </div>
